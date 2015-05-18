@@ -66,6 +66,14 @@ func Read(filenames ...string) (envMap map[string]string, err error) {
 	return
 }
 
+// Load will read env vars from a preloaded string.
+func LoadString(content string) (err error) {
+	lines := strings.Split(string(content), "\n")
+	envMap, err := readLines(lines)
+	loadMap(envMap)
+	return
+}
+
 // Exec loads env vars from the specified filenames (empty map falls back to default)
 // then executes the cmd specified.
 //
@@ -96,13 +104,17 @@ func loadFile(filename string) error {
 		return err
 	}
 
+	loadMap(envMap)
+
+	return nil
+}
+
+func loadMap(envMap map[string]string) {
 	for key, value := range envMap {
 		if os.Getenv(key) == "" {
 			os.Setenv(key, value)
 		}
 	}
-
-	return nil
 }
 
 func readFile(filename string) (envMap map[string]string, err error) {
@@ -112,14 +124,19 @@ func readFile(filename string) (envMap map[string]string, err error) {
 	}
 	defer file.Close()
 
-	envMap = make(map[string]string)
-
 	var lines []string
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		lines = append(lines, scanner.Text())
 	}
 
+	envMap, err = readLines(lines)
+
+	return
+}
+
+func readLines(lines []string) (envMap map[string]string, err error) {
+	envMap = make(map[string]string)
 	for _, fullLine := range lines {
 		if !isIgnoredLine(fullLine) {
 			key, value, err := parseLine(fullLine)
@@ -129,6 +146,7 @@ func readFile(filename string) (envMap map[string]string, err error) {
 			}
 		}
 	}
+
 	return
 }
 
